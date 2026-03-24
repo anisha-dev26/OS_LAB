@@ -1,0 +1,174 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX 100
+
+typedef struct {
+    int id;
+    int arrival;
+    int burst;
+    int remaining;
+    int completion;
+    int waiting;
+    int turnaround;
+    int type;
+} Process;
+
+typedef struct {
+    Process queue[MAX];
+    int front, rear;
+} Queue;
+
+void initQueue(Queue *q) {
+    q->front = q->rear = -1;
+}
+
+int isEmpty(Queue *q) {
+    return q->front == -1;
+}
+
+void enqueue(Queue *q, Process p) {
+    if (q->rear == MAX - 1) return;
+    if (q->front == -1) q->front = 0;
+    q->queue[++q->rear] = p;
+}
+
+Process dequeue(Queue *q) {
+    Process p = q->queue[q->front];
+    if (q->front == q->rear) {
+        q->front = q->rear = -1;
+    } else {
+        q->front++;
+    }
+    return p;
+}
+
+int compareArrival(const void *a, const void *b) {
+    Process *p1 = (Process *)a;
+    Process *p2 = (Process *)b;
+    return p1->arrival - p2->arrival;
+}
+
+int main() {
+    int n;
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    Process plist[MAX];
+    for (int i = 0; i < n; i++) {
+        printf("\nProcess %d\n", i);
+        printf("Enter arrival time: ");
+        scanf("%d", &plist[i].arrival);
+        printf("Enter burst time: ");
+        scanf("%d", &plist[i].burst);
+        printf("Enter type (0 = System, 1 = User): ");
+        scanf("%d", &plist[i].type);
+
+        plist[i].id = i;
+        plist[i].remaining = plist[i].burst;
+        plist[i].completion = plist[i].waiting = plist[i].turnaround = 0;
+    }
+
+    qsort(plist, n, sizeof(Process), compareArrival);
+
+    Queue sysQ, userQ;
+    initQueue(&sysQ);
+    initQueue(&userQ);
+
+    int current_time = 0, completed = 0, i = 0;
+    Process *current = NULL;
+
+
+    int gantt[MAX], gantt_time[MAX], gindex = 0;
+
+    while (completed < n) {
+
+        while (i < n && plist[i].arrival <= current_time) {
+            if (plist[i].type == 0)
+                enqueue(&sysQ, plist[i]);
+            else
+                enqueue(&userQ, plist[i]);
+            i++;
+        }
+
+
+        if (current != NULL && current->type == 1 && !isEmpty(&sysQ)) {
+            enqueue(&userQ, *current);
+            current = NULL;
+        }
+
+
+        if (current == NULL) {
+            if (!isEmpty(&sysQ)) {
+                Process p = dequeue(&sysQ);
+                current = (Process *)malloc(sizeof(Process));
+                *current = p;
+            } else if (!isEmpty(&userQ)) {
+                Process p = dequeue(&userQ);
+                current = (Process *)malloc(sizeof(Process));
+                *current = p;
+            } else {
+                gantt[gindex] = -1;
+                gantt_time[gindex++] = current_time;
+                current_time++;
+                continue;
+            }
+        }
+
+
+        current->remaining--;
+        gantt[gindex] = current->id;
+        gantt_time[gindex++] = current_time;
+        current_time++;
+
+
+        if (current->remaining == 0) {
+            for (int k = 0; k < n; k++) {
+                if (plist[k].id == current->id) {
+                    plist[k].completion = current_time;
+                    plist[k].turnaround = plist[k].completion - plist[k].arrival;
+                    plist[k].waiting = plist[k].turnaround - plist[k].burst;
+                }
+            }
+            completed++;
+            free(current);
+            current = NULL;
+        }
+    }
+
+
+    printf("\nID   Type     AT   BT   CT   WT   TAT\n");
+    double totalWT = 0, totalTAT = 0;
+    for (int j = 0; j < n; j++) {
+        printf("%-4d %-8s %-4d %-4d %-4d %-4d %-4d\n",
+               plist[j].id,
+               plist[j].type == 0 ? "System" : "User",
+               plist[j].arrival,
+               plist[j].burst,
+               plist[j].completion,
+               plist[j].waiting,
+               plist[j].turnaround);
+        totalWT += plist[j].waiting;
+        totalTAT += plist[j].turnaround;
+    }
+    printf("\nAverage Waiting Time: %.2f\n", totalWT / n);
+    printf("Average Turnaround Time: %.2f\n", totalTAT / n);
+
+    // Print Gantt chart
+    printf("\nGantt Chart:\n");
+    for (int j = 0; j < gindex; j++) {
+        if (gantt[j] == -1)
+            printf("| Idle ");
+        else
+            printf("| P%d ", gantt[j]);
+    }
+    printf("|\n");
+
+    for (int j = 0; j < gindex; j++) {
+        printf("%d    ", gantt_time[j]);
+    }
+    printf("%d\n", current_time);
+
+    return 0;
+}
