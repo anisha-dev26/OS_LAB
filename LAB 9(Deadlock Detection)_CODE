@@ -1,0 +1,94 @@
+#include <stdio.h>
+
+int main() {
+    int n, m;
+    int i, j, k;
+
+    printf("Enter number of processes: ");
+    scanf("%d", &n);
+
+    printf("Enter number of resource types: ");
+    scanf("%d", &m);
+
+    int Allocation[n][m], Request[n][m], Available[m];
+
+    printf("Enter Allocation Matrix:\n");
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++) {
+            scanf("%d", &Allocation[i][j]);
+        }
+    }
+
+    printf("Enter Request Matrix:\n");
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < m; j++) {
+            scanf("%d", &Request[i][j]);
+        }
+    }
+
+    printf("Enter Available Resources:\n");
+    for (j = 0; j < m; j++) {
+        scanf("%d", &Available[j]);
+    }
+
+    int Finish[n], Work[m], Sequence[n];
+
+    for (i = 0; i < n; i++)
+        Finish[i] = 0;
+
+    for (j = 0; j < m; j++)
+        Work[j] = Available[j];
+
+    int count = 0;
+
+
+    for (k = 0; k < n; k++) {
+        for (i = 0; i < n; i++) {
+            if (Finish[i] == 0) {
+                int flag = 1;
+
+                for (j = 0; j < m; j++) {
+                    if (Request[i][j] > Work[j]) {
+                        flag = 0;
+                        break;
+                    }
+                }
+
+                if (flag == 1) {
+                    for (j = 0; j < m; j++) {
+                        Work[j] += Allocation[i][j];
+                    }
+
+                    Sequence[count++] = i; // store order
+                    Finish[i] = 1;
+                }
+            }
+        }
+    }
+
+
+    if (count == n) {
+        printf("\nNo Deadlock detected.\nExecution Sequence: ");
+        for (i = 0; i < n; i++) {
+            printf("P%d ", Sequence[i]);
+        }
+        printf("\n");
+    } else {
+        printf("\nDeadlock detected!\n");
+
+        printf("Processes that can finish (partial sequence): ");
+        for (i = 0; i < count; i++) {
+            printf("P%d ", Sequence[i]);
+        }
+
+        printf("\nDeadlocked Processes: ");
+        for (i = 0; i < n; i++) {
+            if (Finish[i] == 0) {
+                printf("P%d ", i);
+            }
+        }
+        printf("\n");
+    }
+
+    return 0;
+}
